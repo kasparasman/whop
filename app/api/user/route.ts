@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     // 1. Extract the user from the token using verifyUserToken()
     const headerValues = await headers();
-    const { userId, username } = await whopsdk.verifyUserToken(headerValues);
+    const { userId } = await whopsdk.verifyUserToken(headerValues);
 
     if (!userId) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Use the experienceId + userId to check access and fetch data
-    const whopData = await getWhopUserData(userId, username || "user", experienceId);
+    const whopData = await getWhopUserData(userId, experienceId);
 
     if (!whopData) {
       return NextResponse.json(
@@ -66,7 +66,6 @@ export async function GET(request: NextRequest) {
 
     // Build identity object
     const identity: UserIdentity = {
-      username: whopData.username,
       userId: whopData.id,
       status,
       actVerification: {
