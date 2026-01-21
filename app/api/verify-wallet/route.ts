@@ -12,14 +12,12 @@ import { getWhopUserData, storeWhopMetadata, grantPublisherAccess } from "@/lib/
 export async function POST(request: NextRequest) {
   try {
     let userId: string | null = null;
-    let username: string | null = null;
 
     // Use real Whop SDK to verify user token
     try {
       const headerValues = await headers();
       const verified = await whopsdk.verifyUserToken(headerValues);
       userId = (verified.userId ?? null) as string | null;
-      username = (verified.username ?? null) as string | null;
     } catch (error) {
       return NextResponse.json(
         { error: "Unauthorized. Invalid Whop token." },
@@ -35,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has purchase (using a default experienceId if not provided)
-    const whopData = await getWhopUserData(userId, username || "user", "exp_default");
+    const whopData = await getWhopUserData(userId, "exp_default");
     if (!whopData || !whopData.hasPurchase) {
       return NextResponse.json(
         { error: "Access denied. This app requires a purchase." },

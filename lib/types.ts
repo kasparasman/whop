@@ -2,7 +2,6 @@
 export type UserStatus = "Visitor" | "Member" | "Publisher";
 
 export interface UserIdentity {
-  username: string;
   userId: string;
   status: UserStatus;
   actVerification: {

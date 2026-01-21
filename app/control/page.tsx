@@ -174,11 +174,6 @@ export default function ControlApp() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Whop Username</div>
-                <div className="text-lg text-zinc-900 dark:text-zinc-100">{identity.username}</div>
-              </div>
-
-              <div>
                 <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Whop User ID</div>
                 <div className="text-lg text-zinc-900 dark:text-zinc-100 font-mono text-sm">{identity.userId}</div>
               </div>

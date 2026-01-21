@@ -2,7 +2,6 @@ import { whopsdk } from "./whop-sdk";
 
 export interface WhopUserData {
   id: string;
-  username: string;
   hasPurchase: boolean;
   metadata?: {
     wallet_verified?: string;
@@ -17,7 +16,6 @@ export interface WhopUserData {
  */
 export async function getWhopUserData(
   userId: string,
-  username: string,
   experienceId: string
 ): Promise<WhopUserData | null> {
   try {
@@ -28,7 +26,6 @@ export async function getWhopUserData(
 
     return {
       id: userId,
-      username: username || "user",
       hasPurchase: access.has_access,
       metadata: {}, // TODO: Fetch real metadata from Whop/DB if needed
     };
