@@ -5,14 +5,6 @@ import { UserIdentity, WalletVerificationResult } from "@/lib/types";
 import { VERIFICATION_MESSAGE } from "@/lib/wallet-verification";
 import { getAddress } from "viem";
 
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: any[] }) => Promise<any>;
-      isMetaMask?: boolean;
-    };
-  }
-}
 
 export default function ControlApp() {
   const [identity, setIdentity] = useState<UserIdentity | null>(null);

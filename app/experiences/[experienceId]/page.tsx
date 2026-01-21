@@ -6,14 +6,6 @@ import { UserIdentity, WalletVerificationResult } from "@/lib/types";
 import { VERIFICATION_MESSAGE } from "@/lib/wallet-verification";
 import { getAddress } from "viem";
 
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-      isMetaMask?: boolean;
-    };
-  }
-}
 
 export default function ExperiencePage() {
   const params = useParams();
@@ -191,11 +183,6 @@ export default function ExperiencePage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Whop Username</div>
-                <div className="text-lg text-zinc-900 dark:text-zinc-100">{identity.username}</div>
-              </div>
-
               <div>
                 <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Whop User ID</div>
                 <div className="text-lg text-zinc-900 dark:text-zinc-100 font-mono text-sm">{identity.userId}</div>
