@@ -11,6 +11,17 @@ import { getWhopUserData, storeWhopMetadata, grantPublisherAccess } from "@/lib/
  */
 export async function POST(request: NextRequest) {
   try {
+    // --- DEVELOPER MODE SIMULATION ---
+    if (process.env.NODE_ENV === "development" && process.env.DEV_SIMULATE_STATUS) {
+      console.log(`[DEV] Simulating successful verification`);
+      return NextResponse.json({
+        success: true,
+        message: "Verification successful (SIMULATED).",
+        walletAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+      });
+    }
+    // ---------------------------------
+
     let userId: string | null = null;
 
     // Use real Whop SDK to verify user token

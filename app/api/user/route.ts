@@ -12,6 +12,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const experienceId = searchParams.get("experienceId") || "exp_default";
 
+    // --- DEVELOPER MODE SIMULATION ---
+    // Only runs locally when DEV_SIMULATE_STATUS is set
+    if (process.env.NODE_ENV === "development" && process.env.DEV_SIMULATE_STATUS) {
+      const simulatedStatus = process.env.DEV_SIMULATE_STATUS as UserStatus;
+      console.log(`[DEV] Simulating user status: ${simulatedStatus}`);
+
+      return NextResponse.json({
+        userId: "user_dev_simulated",
+        status: simulatedStatus,
+        actVerification: {
+          verified: simulatedStatus === "Publisher",
+          walletAddress: simulatedStatus === "Publisher" ? "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" : undefined,
+          network: simulatedStatus === "Publisher" ? "Arbitrum" : undefined,
+          token: simulatedStatus === "Publisher" ? "ACT (ERC-20)" : undefined,
+        }
+      });
+    }
+    // ---------------------------------
+
     // 1. Extract the user from the token using verifyUserToken()
     const headerValues = await headers();
     const { userId } = await whopsdk.verifyUserToken(headerValues);

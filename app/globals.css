@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* AnthropoCity Colors */
+  --anthro-magenta: #e91e63;
+  --anthro-purple: #9c27b0;
+  --anthro-cyan: #00bcd4;
+  --anthro-dark: #050505;
+
+  --background: #050505;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -10,17 +16,210 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-anthro-magenta: var(--anthro-magenta);
+  --color-anthro-purple: var(--anthro-purple);
+  --color-anthro-cyan: var(--anthro-cyan);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #050505;
+    --foreground: #ffffff;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.text-gradient-anthro {
+  background: linear-gradient(135deg, #00fff2, #bd00ff, #ff0055);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 15px rgba(189, 0, 255, 0.3));
+}
+
+.border-gradient-anthro {
+  position: relative;
+  background: linear-gradient(#050505, #050505) padding-box,
+    linear-gradient(135deg, var(--anthro-cyan), var(--anthro-purple)) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 0 20px rgba(156, 39, 176, 0.15);
+}
+
+/* Epicenter Button - Super Glowing */
+.btn-epicenter {
+  background: linear-gradient(135deg, #bd00ff, #ff0055);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 0 20px rgba(189, 0, 255, 0.5),
+    0 0 40px rgba(255, 0, 85, 0.3),
+    inset 0 0 10px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.btn-epicenter:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 30px rgba(189, 0, 255, 0.7),
+    0 0 60px rgba(255, 0, 85, 0.5),
+    inset 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+.btn-epicenter::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.btn-epicenter:active::after {
+  opacity: 1;
+  transform: scale(1);
+  transition: 0s;
+}
+
+/* Alive Background Gradient */
+.bg-alive-gradient::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 50%, rgba(156, 39, 176, 0.25), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(0, 188, 212, 0.2), transparent 45%);
+  animation: bg-breathe 10s ease-in-out infinite alternate;
+}
+
+/* Mouse-reactive blob */
+.bg-alive-gradient::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80vw;
+  height: 80vh;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(233, 30, 99, 0.15), transparent 60%);
+  animation: blob-float 15s ease-in-out infinite;
+}
+
+@keyframes bg-breathe {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.02);
+  }
+
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+@keyframes blob-float {
+
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateX(-50%) translateY(-20px) scale(1.1);
+  }
+}
+
+@keyframes bg-breathe {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.glow-breathing {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0% {
+    box-shadow: 0 0 10px rgba(0, 188, 212, 0.1);
+    border-color: rgba(0, 188, 212, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(0, 188, 212, 0.25), inset 0 0 20px rgba(0, 188, 212, 0.05);
+    border-color: rgba(0, 188, 212, 0.5);
+  }
+
+  100% {
+    box-shadow: 0 0 10px rgba(0, 188, 212, 0.1);
+    border-color: rgba(0, 188, 212, 0.2);
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
 }
