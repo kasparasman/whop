@@ -4,19 +4,21 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { UserIdentity, WalletVerificationResult } from "@/lib/types";
 import { VERIFICATION_MESSAGE } from "@/lib/wallet-verification";
-import { getAddress } from "viem";
-
+import { useAccount, useSignMessage } from "wagmi";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function ExperiencePage() {
   const params = useParams();
   const experienceId = params?.experienceId as string | undefined;
+
+  const { address: connectedAddress, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
   const [identity, setIdentity] = useState<UserIdentity | null>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
 
   // Fetch user identity on mount
   useEffect(() => {
@@ -51,37 +53,9 @@ export default function ExperiencePage() {
     }
   };
 
-  const connectWallet = async () => {
-    if (!window.ethereum) {
-      setError("MetaMask or another Web3 wallet is required. Please install MetaMask.");
-      return;
-    }
-
-    try {
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-
-      if (accounts && accounts.length > 0) {
-        const address = getAddress(accounts[0]);
-        setConnectedAddress(address);
-        setError(null);
-      }
-    } catch (err) {
-      console.error("Wallet connection error:", err);
-      setError("Failed to connect wallet. Please try again.");
-    }
-  };
-
   const handleVerifyWallet = async () => {
-    if (!connectedAddress) {
-      await connectWallet();
-      return;
-    }
-
-    if (!window.ethereum) {
-      setError("MetaMask or another Web3 wallet is required.");
+    if (!isConnected || !connectedAddress) {
+      setError("Please connect your wallet first.");
       return;
     }
 
@@ -90,11 +64,10 @@ export default function ExperiencePage() {
       setError(null);
       setSuccess(null);
 
-      // Request signature
-      const signature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [VERIFICATION_MESSAGE, connectedAddress],
-      }) as string;
+      // Request signature using wagmi
+      const signature = await signMessageAsync({
+        message: VERIFICATION_MESSAGE,
+      });
 
       // Send to server for verification
       const response = await fetch("/api/verify-wallet", {
@@ -114,8 +87,6 @@ export default function ExperiencePage() {
         setSuccess(result.message || "Verification successful. You are now a Publisher.");
         // Refresh identity to show new status
         await fetchIdentity();
-        // Clear wallet connection
-        setConnectedAddress(null);
       } else {
         setError(result.message || result.error || "Verification failed");
       }
@@ -259,21 +230,22 @@ export default function ExperiencePage() {
               </div>
             )}
 
-            <button
-              onClick={handleVerifyWallet}
-              disabled={verifying}
-              className="w-full px-6 py-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {verifying
-                ? "Verifying..."
-                : connectedAddress
-                  ? "Verify ACT Wallet"
-                  : "Connect Wallet"}
-            </button>
-
-            {connectedAddress && (
-              <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                Connected: {shortenAddress(connectedAddress)}
+            {!isConnected ? (
+              <div className="flex justify-center">
+                <ConnectButton label="Connect Wallet" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <button
+                  onClick={handleVerifyWallet}
+                  disabled={verifying}
+                  className="w-full px-6 py-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {verifying ? "Verifying..." : "Verify ACT Wallet"}
+                </button>
+                <div className="flex justify-center">
+                  <ConnectButton showBalance={false} chainStatus="none" />
+                </div>
               </div>
             )}
           </div>
