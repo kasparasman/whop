@@ -2,13 +2,13 @@ import { verifyMessage, getAddress, createPublicClient, http, formatUnits, parse
 import { arbitrum } from "viem/chains";
 
 // Token Addresses (Arbitrum)
-const ACT_TOKEN_ADDRESS = "0xa84e264117442bea8e93f3981124695b693f0d77";
-const WETH_ADDRESS = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1";
-const USDC_E_ADDRESS = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8";
+const ACT_TOKEN_ADDRESS = getAddress("0xa84e264117442bea8e93f3981124695b693f0d77");
+const WETH_ADDRESS = getAddress("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1");
+const USDC_E_ADDRESS = getAddress("0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8");
 
 // Uniswap V3 Pool Addresses (Arbitrum)
-const ACT_WETH_POOL = "0x061f00b9cc145def6c27e61c243c78749a0a3325";
-const WETH_USDC_POOL = "0xC31e54c7a869b9fcbecc14363cf510d1c41fa443";
+const ACT_WETH_POOL = getAddress("0x061f00b9cc145def6c27e61c243c78749a0a3325");
+const WETH_USDC_POOL = getAddress("0xC31e54c7a869b9fcbecc14363cf510d1c41fa443");
 
 const UNISWAP_V3_POOL_ABI = [
   {

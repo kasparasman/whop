@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { UserIdentity, WalletVerificationResult } from "@/lib/types";
 import { VERIFICATION_MESSAGE } from "@/lib/wallet-verification";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount, useSignMessage, useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { formatUnits } from "viem";
+
+const ACT_TOKEN_ADDRESS = "0xa84e264117442bea8e93f3981124695b693f0d77";
 
 export default function ExperiencePage() {
   const params = useParams();
@@ -14,16 +17,41 @@ export default function ExperiencePage() {
   const { address: connectedAddress, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
+  // Fetch user's ACT balance
+  const { data: balance } = useReadContract({
+    address: ACT_TOKEN_ADDRESS as `0x${string}`,
+    abi: [{
+      name: 'balanceOf',
+      type: 'function',
+      stateMutability: 'view',
+      inputs: [{ name: 'account', type: 'address' }],
+      outputs: [{ type: 'uint256' }],
+    }],
+    functionName: 'balanceOf',
+    args: connectedAddress ? [connectedAddress] : undefined,
+  });
+
   const [identity, setIdentity] = useState<UserIdentity | null>(null);
+  const [actPrice, setActPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Fetch user identity on mount
+  // Fetch data on mount
   useEffect(() => {
-    fetchIdentity();
+    Promise.all([fetchIdentity(), fetchPrice()]);
   }, []);
+
+  const fetchPrice = async () => {
+    try {
+      const response = await fetch("/api/act-price");
+      const data = await response.json();
+      if (data.price) setActPrice(data.price);
+    } catch (err) {
+      console.error("Failed to fetch ACT price:", err);
+    }
+  };
 
   const fetchIdentity = async () => {
     try {
@@ -210,13 +238,46 @@ export default function ExperiencePage() {
         {/* ACT Wallet Verification */}
         {identity && identity.status === "Member" && (
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6 space-y-6">
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-              ACT Wallet Verification
-            </h2>
+            <div className="flex justify-between items-start">
+              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+                ACT Wallet Verification
+              </h2>
+              {actPrice && (
+                <div className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                    Live Price: ${actPrice.toFixed(4)}
+                  </span>
+                </div>
+              )}
+            </div>
 
             <p className="text-zinc-600 dark:text-zinc-400">
               Verify your ACT token ownership to gain Publisher access.
+              Required value: <strong className="text-zinc-900 dark:text-zinc-100">$10.00 USD</strong>.
             </p>
+
+            {isConnected && balance !== undefined && actPrice && (
+              <div className="p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200 dark:border-zinc-700 space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500">Your ACT Balance</span>
+                  <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                    {parseFloat(formatUnits(balance as bigint, 18)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ACT
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                  <span className="text-zinc-500">Estimated USD Value</span>
+                  <div className="text-right">
+                    <div className={`text-lg font-bold ${(parseFloat(formatUnits(balance as bigint, 18)) * actPrice) >= 10 ? 'text-green-500' : 'text-red-500'}`}>
+                      ${(parseFloat(formatUnits(balance as bigint, 18)) * actPrice).toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-zinc-400 uppercase tracking-wider">
+                      {(parseFloat(formatUnits(balance as bigint, 18)) * actPrice) >= 10 ? '✓ Eligible' : '✗ Insufficient Value'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -231,20 +292,28 @@ export default function ExperiencePage() {
             )}
 
             {!isConnected ? (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+                  <svg className="w-8 h-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                </div>
+                <p className="text-sm text-zinc-500 text-center max-w-xs">
+                  Connect your wallet to check your ACT balance and verify ownership.
+                </p>
                 <ConnectButton label="Connect Wallet" />
               </div>
             ) : (
               <div className="space-y-4">
                 <button
                   onClick={handleVerifyWallet}
-                  disabled={verifying}
-                  className="w-full px-6 py-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={verifying || (balance !== undefined && actPrice !== null && (parseFloat(formatUnits(balance as bigint, 18)) * actPrice) < 10)}
+                  className="w-full px-6 py-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold rounded-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-zinc-900/10 dark:shadow-none"
                 >
                   {verifying ? "Verifying..." : "Verify ACT Wallet"}
                 </button>
                 <div className="flex justify-center">
-                  <ConnectButton showBalance={false} chainStatus="none" />
+                  <ConnectButton showBalance={false} chainStatus="none" accountStatus="address" />
                 </div>
               </div>
             )}
