@@ -13,11 +13,9 @@ export async function GET(request: NextRequest) {
     const experienceId = searchParams.get("experienceId") || "exp_default";
 
     // --- DEVELOPER MODE SIMULATION ---
-    // Only runs locally when DEV_SIMULATE_STATUS is set
-    if (process.env.NODE_ENV === "development" && process.env.DEV_SIMULATE_STATUS) {
+    const isDev = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview";
+    if (isDev && process.env.DEV_SIMULATE_STATUS) {
       const simulatedStatus = process.env.DEV_SIMULATE_STATUS as UserStatus;
-      console.log(`[DEV] Simulating user status: ${simulatedStatus}`);
-
       return NextResponse.json({
         userId: "user_dev_simulated",
         status: simulatedStatus,
@@ -29,17 +27,37 @@ export async function GET(request: NextRequest) {
         }
       });
     }
-    // ---------------------------------
 
     // 1. Extract the user from the token using verifyUserToken()
+    // We pass the full headers and check search params as a fallback
     const headerValues = await headers();
-    const { userId } = await whopsdk.verifyUserToken(headerValues);
+    let userId: string | undefined;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized. Invalid or missing Whop token." },
-        { status: 401 }
-      );
+    try {
+      // Whop SDK internal helper can handle headers() result directly
+      const verified = await whopsdk.verifyUserToken(headerValues);
+      userId = verified.userId;
+    } catch (sdkError: any) {
+      // Fallback: Check for whop_user_token in query params if headers fail
+      const tokenFromQuery = searchParams.get("whop_user_token");
+      if (tokenFromQuery) {
+        try {
+          const verified = await whopsdk.verifyUserToken({
+            headers: new Headers({ authorization: `Bearer ${tokenFromQuery}` })
+          } as any);
+          userId = verified.userId;
+        } catch (innerError) {
+          console.error("Failed to verify token from query params:", innerError);
+        }
+      }
+
+      if (!userId) {
+        console.error("Whop verification failed:", sdkError.message);
+        return NextResponse.json(
+          { error: "Unauthorized. Whop token not found or invalid." },
+          { status: 401 }
+        );
+      }
     }
 
     // 2. Use the experienceId + userId to check access and fetch data

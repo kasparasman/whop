@@ -7,13 +7,16 @@ import { VERIFICATION_MESSAGE } from "@/lib/wallet-verification";
 import { useAccount, useSignMessage, useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { formatUnits } from "viem";
+import { useSearchParams } from "next/navigation";
 
 const ACT_TOKEN_ADDRESS = "0xa84e264117442bea8e93f3981124695b693f0d77";
 const MIN_USD_VALUE = Number(process.env.NEXT_PUBLIC_ACT_THRESHOLD_USD || 10);
 
 export default function ExperiencePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const experienceId = params?.experienceId as string | undefined;
+  const currentQueryString = searchParams?.toString() ? `?${searchParams.toString()}` : "";
 
   const { address: connectedAddress, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
@@ -46,7 +49,7 @@ export default function ExperiencePage() {
 
   const fetchPrice = async () => {
     try {
-      const response = await fetch("/api/act-price");
+      const response = await fetch(`/api/act-price${currentQueryString}`);
       const data = await response.json();
       if (data.price) setActStats(data);
     } catch (err) {
@@ -60,7 +63,8 @@ export default function ExperiencePage() {
       setError(null);
 
       // Use experienceId in the request to check correct product access
-      const url = `/api/user${experienceId ? `?experienceId=${experienceId}` : ""}`;
+      const separator = currentQueryString.includes('?') ? '&' : '?';
+      const url = `/api/user${currentQueryString}${experienceId ? `${separator}experienceId=${experienceId}` : ""}`;
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -99,7 +103,7 @@ export default function ExperiencePage() {
       });
 
       // Send to server for verification
-      const response = await fetch("/api/verify-wallet", {
+      const response = await fetch(`/api/verify-wallet${currentQueryString}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -132,7 +136,7 @@ export default function ExperiencePage() {
   };
 
   const openInMetamask = () => {
-    const dappUrl = window.location.host + window.location.pathname;
+    const dappUrl = window.location.host + window.location.pathname + window.location.search;
     const metamaskUrl = `https://metamask.app.link/dapp/${dappUrl}`;
     window.open(metamaskUrl, "_blank");
   };

@@ -17,6 +17,7 @@ import {
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useSignMessage } from "wagmi";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 
 interface ActStats {
     price: number;
@@ -33,6 +34,9 @@ export function IdentityHandshake() {
     const [error, setError] = useState<string | null>(null);
     const [publisherStatus, setPublisherStatus] = useState<boolean>(false);
 
+    const searchParams = useSearchParams();
+    const currentQueryString = searchParams?.toString() ? `?${searchParams.toString()}` : "";
+
     const { signMessageAsync } = useSignMessage();
 
     useEffect(() => {
@@ -42,7 +46,7 @@ export function IdentityHandshake() {
 
     const fetchStats = async () => {
         try {
-            const res = await fetch("/api/act-price");
+            const res = await fetch(`/api/act-price${currentQueryString}`);
             const data = await res.json();
             setStats(data);
         } catch (err) {
@@ -54,13 +58,15 @@ export function IdentityHandshake() {
 
     const checkUserStatus = async () => {
         try {
-            const res = await fetch("/api/user");
+            const res = await fetch(`/api/user${currentQueryString}`);
             const data = await res.json();
             if (data.status === "Publisher") {
                 setPublisherStatus(true);
             }
         } catch (err) {
             console.error("Failed to check status", err);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -73,7 +79,7 @@ export function IdentityHandshake() {
             const message = `Verify your ownership of ACT token.\nTimestamp: ${Date.now()}`;
             const signature = await signMessageAsync({ message });
 
-            const res = await fetch("/api/verify-wallet", {
+            const res = await fetch(`/api/verify-wallet${currentQueryString}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ address, signature }),

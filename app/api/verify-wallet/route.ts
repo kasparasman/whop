@@ -12,7 +12,8 @@ import { getWhopUserData, storeWhopMetadata, grantPublisherAccess } from "@/lib/
 export async function POST(request: NextRequest) {
   try {
     // --- DEVELOPER MODE SIMULATION ---
-    if (process.env.NODE_ENV === "development" && process.env.DEV_SIMULATE_STATUS) {
+    const isDev = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "preview";
+    if (isDev && process.env.DEV_SIMULATE_STATUS) {
       console.log(`[DEV] Simulating successful verification`);
       return NextResponse.json({
         success: true,
@@ -20,25 +21,40 @@ export async function POST(request: NextRequest) {
         walletAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
       });
     }
-    // ---------------------------------
 
     let userId: string | null = null;
+    const { searchParams } = new URL(request.url);
 
     // Use real Whop SDK to verify user token
     try {
       const headerValues = await headers();
       const verified = await whopsdk.verifyUserToken(headerValues);
       userId = (verified.userId ?? null) as string | null;
-    } catch (error) {
-      return NextResponse.json(
-        { error: "Unauthorized. Invalid Whop token." },
-        { status: 401 }
-      );
+    } catch (sdkError: any) {
+      // Fallback: Check for whop_user_token in query params if headers fail
+      const tokenFromQuery = searchParams.get("whop_user_token");
+      if (tokenFromQuery) {
+        try {
+          const verified = await whopsdk.verifyUserToken({
+            headers: new Headers({ authorization: `Bearer ${tokenFromQuery}` })
+          } as any);
+          userId = (verified.userId ?? null) as string | null;
+        } catch (innerError) {
+          console.error("Failed to verify token from query params:", innerError);
+        }
+      }
+
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Unauthorized. Whop token not found or invalid." },
+          { status: 401 }
+        );
+      }
     }
 
     if (!userId) {
       return NextResponse.json(
-        { error: "Unauthorized. No user found for this token." },
+        { error: "Unauthorized. Whop identity not established." },
         { status: 401 }
       );
     }
