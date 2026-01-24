@@ -49,6 +49,10 @@ export async function getWhopUserData(
       }
     );
 
+    if (response.status === 401) {
+      console.error("[Whop API] CRITICAL: Your WHOP_API_KEY does not have permission to read company members. Please ensure 'member:basic:read' is enabled in your Whop Developer Dashboard.");
+    }
+
     let metadata = {};
     if (response.ok) {
       const member = await response.json();
@@ -95,7 +99,11 @@ export async function storeWhopMetadata(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("Error storing Whop metadata:", error);
+      if (response.status === 401) {
+        console.error("[Whop API] CRITICAL: Your WHOP_API_KEY does not have permission to update metadata. Please ensure 'member:manage' and 'member:basic:read' are enabled in your Whop Developer Dashboard.");
+      } else {
+        console.error("Error storing Whop metadata:", error);
+      }
       return false;
     }
 
@@ -134,7 +142,11 @@ export async function grantPublisherAccess(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("Error granting publisher access:", error);
+      if (response.status === 401) {
+        console.error("[Whop API] CRITICAL: Your WHOP_API_KEY does not have permission to create memberships. Please ensure 'membership:write' or 'member:manage' is enabled in your Whop Developer Dashboard.");
+      } else {
+        console.error("Error granting publisher access:", error);
+      }
       return false;
     }
 
