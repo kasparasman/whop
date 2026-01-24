@@ -97,9 +97,23 @@ export default function ExperiencePage() {
       setError(null);
       setSuccess(null);
 
+      const message = VERIFICATION_MESSAGE;
+
+      // On mobile, we might need to "kick" the app into focus if the user isn't in the MM browser
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isMMBrowser = (window as any).ethereum?.isMetaMask && !(/Whop/i.test(navigator.userAgent));
+
+      if (isMobile && !isMMBrowser) {
+        // Short delay to allow the sign request to be pending, then trigger the deep link to bring MM to front
+        setTimeout(() => {
+          const dappUrl = window.location.host + window.location.pathname + window.location.search;
+          window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
+        }, 500);
+      }
+
       // Request signature using wagmi
       const signature = await signMessageAsync({
-        message: VERIFICATION_MESSAGE,
+        message,
       });
 
       // Send to server for verification

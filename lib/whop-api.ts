@@ -19,15 +19,27 @@ export async function getWhopUserData(
   experienceId: string
 ): Promise<WhopUserData | null> {
   try {
+    console.log(`[Whop API] Fetching data for user ${userId} using experience ${experienceId}`);
+
     // 1. Check access
-    const access = await whopsdk.users.checkAccess(experienceId, {
-      id: userId,
-    });
+    let hasPurchase = false;
+    try {
+      const access = await whopsdk.users.checkAccess(experienceId, {
+        id: userId,
+      });
+      hasPurchase = access.has_access;
+    } catch (checkError: any) {
+      // If the experience ID is not found (404), it might not be set up yet.
+      // In development or for the default experience, we allow proceeding.
+      if (checkError.status === 404) {
+        console.warn(`[Whop API] Experience/Product ${experienceId} not found. Defaulting to hasPurchase: true for development.`);
+        hasPurchase = true; // Allow dev to proceed if they haven't set up Whop experiences yet
+      } else {
+        console.error("[Whop API] checkAccess error:", checkError.message);
+      }
+    }
 
     // 2. Fetch user metadata from Whop
-    // Note: In a real app, you might want to fetch this from your own DB or 
-    // use the Whop Company Metadata API if allowed.
-    // For now, we'll try to fetch the company member data which contains metadata.
     const response = await fetch(
       `https://api.whop.com/api/v2/company/members/${userId}`,
       {
@@ -45,11 +57,11 @@ export async function getWhopUserData(
 
     return {
       id: userId,
-      hasPurchase: access.has_access,
+      hasPurchase,
       metadata,
     };
   } catch (error) {
-    console.error("Error fetching Whop user data:", error);
+    console.error("Critical error in getWhopUserData:", error);
     return null;
   }
 }

@@ -77,6 +77,19 @@ export function IdentityHandshake() {
 
         try {
             const message = `Verify your ownership of ACT token.\nTimestamp: ${Date.now()}`;
+
+            // On mobile, we might need to "kick" the app into focus if the user isn't in the MM browser
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isMMBrowser = (window as any).ethereum?.isMetaMask && !(/Whop/i.test(navigator.userAgent));
+
+            if (isMobile && !isMMBrowser) {
+                // Short delay to allow the sign request to be pending, then trigger the deep link to bring MM to front
+                setTimeout(() => {
+                    const dappUrl = window.location.host + window.location.pathname + window.location.search;
+                    window.location.href = `https://metamask.app.link/dapp/${dappUrl}`;
+                }, 500);
+            }
+
             const signature = await signMessageAsync({ message });
 
             const res = await fetch(`/api/verify-wallet${currentQueryString}`, {
@@ -93,10 +106,21 @@ export function IdentityHandshake() {
                 setError(result.message || "Verification failed");
             }
         } catch (err: any) {
-            setError(err.message || "An error occurred");
+            console.error("Verification error:", err);
+            if (err.message?.includes("rejected")) {
+                setError("Signature request was cancelled.");
+            } else {
+                setError(err.message || "An error occurred");
+            }
         } finally {
             setVerifying(false);
         }
+    };
+
+    const openInMetamask = () => {
+        const dappUrl = window.location.host + window.location.pathname + window.location.search;
+        const metamaskUrl = `https://metamask.app.link/dapp/${dappUrl}`;
+        window.open(metamaskUrl, "_blank");
     };
 
     return (
