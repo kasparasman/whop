@@ -19,15 +19,34 @@ export async function getWhopUserData(
   experienceId: string
 ): Promise<WhopUserData | null> {
   try {
-    // Check if user has access to the specified experience
+    // 1. Check access
     const access = await whopsdk.users.checkAccess(experienceId, {
       id: userId,
     });
 
+    // 2. Fetch user metadata from Whop
+    // Note: In a real app, you might want to fetch this from your own DB or 
+    // use the Whop Company Metadata API if allowed.
+    // For now, we'll try to fetch the company member data which contains metadata.
+    const response = await fetch(
+      `https://api.whop.com/api/v2/company/members/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
+        },
+      }
+    );
+
+    let metadata = {};
+    if (response.ok) {
+      const member = await response.json();
+      metadata = member.metadata || {};
+    }
+
     return {
       id: userId,
       hasPurchase: access.has_access,
-      metadata: {}, // TODO: Fetch real metadata from Whop/DB if needed
+      metadata,
     };
   } catch (error) {
     console.error("Error fetching Whop user data:", error);
@@ -48,8 +67,27 @@ export async function storeWhopMetadata(
   }
 ): Promise<boolean> {
   try {
-    // TODO: Implement actual metadata storage via Whop API
-    console.log("[Whop API] Storing metadata for user:", userId, metadata);
+    const response = await fetch(
+      `https://api.whop.com/api/v2/company/members/${userId}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          metadata,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Error storing Whop metadata:", error);
+      return false;
+    }
+
+    console.log("[Whop API] Stored metadata for user:", userId);
     return true;
   } catch (error) {
     console.error("Error storing Whop metadata:", error);

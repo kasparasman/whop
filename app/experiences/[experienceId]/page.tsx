@@ -121,7 +121,7 @@ export default function ExperiencePage() {
       }
     } catch (err) {
       console.error("Verification error:", err);
-      if (err instanceof Error && err.message.includes("User rejected")) {
+      if (err instanceof Error && (err.message.includes("User rejected") || err.message.includes("rejected"))) {
         setError("Signature request was cancelled.");
       } else {
         setError(err instanceof Error ? err.message : "Failed to verify wallet");
@@ -129,6 +129,12 @@ export default function ExperiencePage() {
     } finally {
       setVerifying(false);
     }
+  };
+
+  const openInMetamask = () => {
+    const dappUrl = window.location.host + window.location.pathname;
+    const metamaskUrl = `https://metamask.app.link/dapp/${dappUrl}`;
+    window.open(metamaskUrl, "_blank");
   };
 
   const shortenAddress = (address?: string) => {
@@ -327,11 +333,21 @@ export default function ExperiencePage() {
             )}
 
             {!isConnected ? (
-              <div className="flex flex-col items-center justify-center p-12 border border-dashed border-zinc-800 rounded-2xl bg-black/20">
+              <div className="flex flex-col items-center justify-center p-8 border border-dashed border-zinc-800 rounded-2xl bg-black/40">
                 <ConnectButton label="Connect Wallet to Verify" />
-                <p className="text-sm text-zinc-600 mt-4 font-light">
-                  Connect your Arbitrum wallet to continue
-                </p>
+
+                <div className="mt-8 pt-8 border-t border-zinc-800/50 w-full text-center">
+                  <p className="text-xs text-zinc-500 mb-4 font-light tracking-wide italic">
+                    Experiencing issues with the Metamask button?
+                  </p>
+                  <button
+                    onClick={openInMetamask}
+                    className="text-xs font-bold text-[--anthro-cyan] hover:text-white transition-colors uppercase tracking-widest flex items-center justify-center gap-2 mx-auto"
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-5 17l1-5h-2l5-7-1 5h2l-5 7z" /></svg>
+                    Open in Metamask Browser
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col md:flex-row gap-4 pt-4">
