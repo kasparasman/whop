@@ -1,4 +1,5 @@
 import { whopsdk } from "./whop-sdk";
+import { sql } from "./db";
 
 export interface WhopUserData {
   id: string;
@@ -12,7 +13,8 @@ export interface WhopUserData {
 }
 
 /**
- * Get user data and metadata for a specific user
+ * Get user data and verification status from Neon DB
+ * This uses the official @whop/sdk client for access checks.
  */
 export async function getWhopUserData(
   userId: string,
@@ -21,7 +23,8 @@ export async function getWhopUserData(
   try {
     console.log(`[Whop API] Fetching data for user ${userId} using experience ${experienceId}`);
 
-    // 1. Check access
+    // 1. Check access via SDK (Product Gating)
+    // Signature: checkAccess(resourceID: string, params: { id: string })
     let hasPurchase = false;
     try {
       const access = await whopsdk.users.checkAccess(experienceId, {
@@ -29,35 +32,27 @@ export async function getWhopUserData(
       });
       hasPurchase = access.has_access;
     } catch (checkError: any) {
-      // If the experience ID is not found (404), it might not be set up yet.
-      // In development or for the default experience, we allow proceeding.
       if (checkError.status === 404) {
         console.warn(`[Whop API] Experience/Product ${experienceId} not found. Defaulting to hasPurchase: true for development.`);
-        hasPurchase = true; // Allow dev to proceed if they haven't set up Whop experiences yet
+        hasPurchase = true;
       } else {
         console.error("[Whop API] checkAccess error:", checkError.message);
       }
     }
 
-    // 2. Fetch user metadata from Whop
-    const response = await fetch(
-      `https://api.whop.com/api/v2/company/members/${userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
-        },
-      }
-    );
+    // 2. Fetch verification status from local Neon DB
+    // This is our source of truth for wallet mapping since Whop has no user metadata.
+    const dbResults = await sql`
+      SELECT * FROM user_verifications WHERE whop_user_id = ${userId} LIMIT 1
+    `;
 
-    if (response.status === 401) {
-      console.error("[Whop API] CRITICAL: Your WHOP_API_KEY does not have permission to read company members. Please ensure 'member:basic:read' is enabled in your Whop Developer Dashboard.");
-    }
-
-    let metadata = {};
-    if (response.ok) {
-      const member = await response.json();
-      metadata = member.metadata || {};
-    }
+    const verification = dbResults[0];
+    const metadata = verification ? {
+      wallet_verified: "true",
+      wallet_address: verification.wallet_address,
+      act_balance_verified: "true",
+      verification_timestamp: (verification.verified_at as Date)?.toISOString(),
+    } : {};
 
     return {
       id: userId,
@@ -71,7 +66,7 @@ export async function getWhopUserData(
 }
 
 /**
- * Store metadata via Whop Company Metadata API
+ * Store verification status in Neon DB
  */
 export async function storeWhopMetadata(
   userId: string,
@@ -83,74 +78,37 @@ export async function storeWhopMetadata(
   }
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.whop.com/api/v2/company/members/${userId}`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          metadata,
-        }),
-      }
-    );
+    // We store this in Neon because Whop does not have custom user metadata fields.
+    await sql`
+      INSERT INTO user_verifications (whop_user_id, wallet_address, is_verified, verified_at)
+      VALUES (${userId}, ${metadata.wallet_address}, true, NOW())
+      ON CONFLICT (whop_user_id) 
+      DO UPDATE SET 
+        wallet_address = EXCLUDED.wallet_address,
+        is_verified = true,
+        verified_at = NOW()
+    `;
 
-    if (!response.ok) {
-      const error = await response.text();
-      if (response.status === 401) {
-        console.error("[Whop API] CRITICAL: Your WHOP_API_KEY does not have permission to update metadata. Please ensure 'member:manage' and 'member:basic:read' are enabled in your Whop Developer Dashboard.");
-      } else {
-        console.error("Error storing Whop metadata:", error);
-      }
-      return false;
-    }
-
-    console.log("[Whop API] Stored metadata for user:", userId);
+    console.log("[DB] Stored/Updated verification for user:", userId);
     return true;
   } catch (error) {
-    console.error("Error storing Whop metadata:", error);
+    console.error("Error storing verification in DB:", error);
     return false;
   }
 }
 
-// Publisher product ID
-const PUBLISHER_PRODUCT_ID = "prod_Umyij3nzsTJ3h";
-
 /**
- * Grant access to Publisher product via Whop API
+ * Grant access to Publisher functionality.
+ * Since Whop doesn't have a direct "Grant Membership" API without checkout,
+ * we handle the "Publisher" status primarily in our own Neon database.
  */
 export async function grantPublisherAccess(
   userId: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `https://api.whop.com/api/v2/memberships`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          product_id: PUBLISHER_PRODUCT_ID,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      if (response.status === 401) {
-        console.error("[Whop API] CRITICAL: Your WHOP_API_KEY does not have permission to create memberships. Please ensure 'membership:write' or 'member:manage' is enabled in your Whop Developer Dashboard.");
-      } else {
-        console.error("Error granting publisher access:", error);
-      }
-      return false;
-    }
-
-    console.log("[Whop API] Granted publisher access to user:", userId);
+    // We rely on the Neon DB (storeWhopMetadata) to confirm they are verified.
+    // In this app, "Is in DB" == "Is a Publisher".
+    console.log("[App Logic] User is recognized as Publisher locally:", userId);
     return true;
   } catch (error) {
     console.error("Error granting publisher access:", error);
